@@ -3,179 +3,352 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>競輪 AI分析シミュレーター v3</title>
+    <title>競輪 乱数・買い目ジェネレーター v2</title>
     <style>
-        /* CSSスタイルはVer2.0から変更ありませんが、読みやすさのために一部調整 */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; color: #1c1e21; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { font-size: 24px; text-align: center; color: #0d47a1; }
-        .control-group { margin-bottom: 20px; }
-        label { display: block; font-weight: bold; margin-bottom: 8px; }
-        select, button { width: 100%; padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ddd; }
-        button { background-color: #1877f2; color: white; font-weight: bold; border: none; cursor: pointer; margin-top: 10px; }
-        button:hover { background-color: #166fe5; }
-        #reset-seed { background-color: #6c757d; }
-        #reset-seed:hover { background-color: #5a6268; }
-        .results { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
-        .result-box { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        .result-box h3 { margin-top: 0; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
-        .recommendation ul { padding-left: 20px; list-style-type: ' '; margin: 0; }
-        .recommendation li { padding-left: 10px; margin-bottom: 8px; font-size: 16px; }
-        .confidence { font-size: 16px; color: #ffc107; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            color: #0d47a1;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #1877f2;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #166fe5;
+        }
+        .fixed-numbers-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            gap: 10px;
+        }
+        .fixed-number-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fixed-number-item input {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+        }
+        .results {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .result-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .result-box h3 {
+            margin-top: 0;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .result-numbers {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 8px;
+            color: #d32f2f;
+            background-color: #e7f3ff;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .recommendation ul {
+            padding-left: 20px;
+            list-style-type: '🚲';
+            margin: 0;
+        }
+        .recommendation li {
+            padding-left: 10px;
+            margin-bottom: 8px;
+        }
+        #reset-seed {
+            background-color: #6c757d;
+        }
+        #reset-seed:hover {
+            background-color: #5a6268;
+        }
+        .confidence {
+            font-size: 16px;
+            color: #ffc107;
+        }
         #hit-rate-box h3 { color: #1565c0; }
         #recovery-rate-box h3 { color: #c62828; }
-        .thinking-process { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; }
-        .thinking-process p { margin: 0 0 8px 0; font-size: 14px; }
-        .thinking-process strong { color: #495057; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>競輪 AI分析シミュレーター v3</h1>
-    <p style="font-size:12px; color:#e53935; text-align:center; font-weight:bold;">※これは実際のデータを分析するものではなく、AIの思考を疑似体験する思考実験ツールです。</p>
-    
+    <h1>競輪 乱数・買い目ジェネレーター v2</h1>
+
     <div class="control-group">
-        <label for="num-of-racers">車立て</label>
-        <select id="num-of-racers">
+        <label for="max-number">最大値（何車立て？）</label>
+        <select id="max-number">
             <option value="7">7車立て</option>
             <option value="8">8車立て</option>
             <option value="9" selected>9車立て</option>
         </select>
     </div>
 
-    <button id="generate-btn">AIに分析を依頼</button>
-    <button id="reset-seed">リセット</button>
+    <div class="control-group">
+        <label for="num-to-generate">発生させる乱数の個数</label>
+        <select id="num-to-generate">
+            <option value="3">3個</option>
+            <option value="4">4個</option>
+            <option value="5">5個</option>
+            <option value="6">6個</option>
+        </select>
+    </div>
+
+    <div class="control-group">
+        <label>必ず含める数値（軸）</label>
+        <div id="fixed-numbers" class="fixed-numbers-container"></div>
+    </div>
+
+    <button id="generate-btn">乱数を生成して買い目を表示</button>
+    <button id="reset-seed">設定をリセット</button>
 
     <div id="results" class="results" style="display: none;">
-        <div id="thinking-process-box" class="thinking-process">
-            <h3>AIの思考プロセス（シミュレーション）</h3>
-            <p id="virtual-bank-info"></p>
-            <p id="virtual-line-info"></p>
-            <p><strong>▼ 仮想スコア詳細</strong></p>
-            <ul id="virtual-score-details" style="font-size: 12px; padding-left: 20px;"></ul>
+        <div class="result-box">
+            <h3>生成された乱数</h3>
+            <p id="random-numbers" class="result-numbers"></p>
         </div>
         
         <div id="hit-rate-box" class="result-box recommendation">
-            <h3>AI提案：的中率重視</h3>
+            <h3>的中率重視（人気狙い風）</h3>
             <ul id="hit-rate-recs"></ul>
         </div>
         
         <div id="recovery-rate-box" class="result-box recommendation">
-            <h3>AI提案：回収率重視</h3>
+            <h3>回収率重視（穴狙い風）</h3>
             <ul id="recovery-rate-recs"></ul>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const numOfRacersSelect = document.getElementById('num-of-racers');
-    const generateBtn = document.getElementById('generate-btn');
-    const resetBtn = document.getElementById('reset-seed');
-    const resultsDiv = document.getElementById('results');
-    const bankInfoP = document.getElementById('virtual-bank-info');
-    const lineInfoP = document.getElementById('virtual-line-info');
-    const scoreDetailsUl = document.getElementById('virtual-score-details');
-    const hitRateRecsUl = document.getElementById('hit-rate-recs');
-    const recoveryRateRecsUl = document.getElementById('recovery-rate-recs');
+    document.addEventListener('DOMContentLoaded', function() {
+        // ... (要素取得のコードは前回と同じ)
+        const maxNumberSelect = document.getElementById('max-number');
+        const numToGenerateSelect = document.getElementById('num-to-generate');
+        const fixedNumbersContainer = document.getElementById('fixed-numbers');
+        const generateBtn = document.getElementById('generate-btn');
+        const resetBtn = document.getElementById('reset-seed');
+        const resultsDiv = document.getElementById('results');
+        const randomNumbersP = document.getElementById('random-numbers');
+        const hitRateRecsUl = document.getElementById('hit-rate-recs');
+        const recoveryRateRecsUl = document.getElementById('recovery-rate-recs');
 
-    generateBtn.addEventListener('click', () => {
-        const numOfRacers = parseInt(numOfRacersSelect.value);
-        
-        // 1. 仮想パラメータを生成
-        const bankType = Math.random() < 0.5 ? '先行有利' : '追込有利';
-        bankInfoP.innerHTML = `<strong>仮想バンク情報:</strong> 弥彦競輪場を想定。本日の傾向は「${bankType}」と分析。`;
-
-        const racers = [];
-        for (let i = 1; i <= numOfRacers; i++) {
-            racers.push({
-                num: i,
-                // 注: 以下は全てランダムに生成される「仮想の」データです
-                baseScore: 80 + Math.random() * 25, // 仮想 競走得点
-                condition: Math.random(), // 仮想 調子 (0-1)
-                bankBonus: (bankType === '先行有利' && i <= 4) || (bankType === '追込有利' && i >= 5) ? 1.05 : 1, // 仮想 バンク相性
-            });
+        // ... (initialize, updateFixedNumbers, updateNumToGenerateOptions 関数は前回と同じ)
+        function initialize() {
+            updateFixedNumbers();
+            updateNumToGenerateOptions();
         }
 
-        // 2. 仮想ラインを形成
-        const lines = createVirtualLines(racers.map(r => r.num));
-        lineInfoP.innerHTML = `<strong>仮想ライン形成:</strong> ${lines.map(line => line.join('-')).join(' / ')}`;
-
-        // 3. 総合スコアを計算
-        racers.forEach(racer => {
-            const line = lines.find(l => l.includes(racer.num));
-            let lineBonus = 1;
-            if (line && line.length > 1) {
-                lineBonus = (line[0] === racer.num) ? 1.1 : 1.05; // ライン先頭はボーナス大
+        function updateFixedNumbers() {
+            const max = parseInt(maxNumberSelect.value);
+            fixedNumbersContainer.innerHTML = '';
+            for (let i = 1; i <= max; i++) {
+                const item = document.createElement('div');
+                item.className = 'fixed-number-item';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = 'fix-' + i;
+                checkbox.value = i;
+                const label = document.createElement('label');
+                label.htmlFor = 'fix-' + i;
+                label.textContent = i;
+                item.appendChild(checkbox);
+                item.appendChild(label);
+                fixedNumbersContainer.appendChild(item);
             }
-            racer.totalScore = racer.baseScore * (1 + racer.condition * 0.1) * racer.bankBonus * lineBonus;
-        });
-        
-        // 4. スコア順にソート
-        const sortedRacers = [...racers].sort((a, b) => b.totalScore - a.totalScore);
+        }
 
-        // 5. 思考プロセスを表示
-        scoreDetailsUl.innerHTML = '';
-        sortedRacers.forEach(r => {
-            scoreDetailsUl.innerHTML += `<li>${r.num}番: 総合スコア ${r.totalScore.toFixed(1)} (基礎${r.baseScore.toFixed(0)} 調子${(r.condition*100).toFixed(0)}%)</li>`;
-        });
+        function updateNumToGenerateOptions() {
+            const max = parseInt(maxNumberSelect.value);
+            const currentVal = numToGenerateSelect.value;
+            numToGenerateSelect.innerHTML = '';
+            for (let i = 2; i <= max; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${i}個`;
+                numToGenerateSelect.appendChild(option);
+            }
+            if (currentVal <= max) {
+               numToGenerateSelect.value = currentVal;
+            } else {
+               numToGenerateSelect.value = Math.min(3, max);
+            }
+        }
         
-        // 6. 買い目を提案
-        displayRecommendations(sortedRacers);
-        resultsDiv.style.display = 'block';
-    });
+        maxNumberSelect.addEventListener('change', initialize);
 
-    resetBtn.addEventListener('click', () => {
-        resultsDiv.style.display = 'none';
-    });
-    
-    function createVirtualLines(racers) {
-        // 注: 競輪の複雑なライン形成を単純化したランダムなシミュレーションです
-        let remaining = [...racers];
-        const lines = [];
-        while (remaining.length > 0) {
-            let lineLength;
-            if(remaining.length >= 4 && Math.random() < 0.6) lineLength = 3;
-            else if(remaining.length >= 2 && Math.random() < 0.8) lineLength = 2;
-            else lineLength = 1;
-            
-            const line = [];
-            for(let i=0; i<lineLength; i++) {
-                if (remaining.length > 0) {
-                    const index = Math.floor(Math.random() * remaining.length);
-                    line.push(remaining.splice(index, 1)[0]);
+        generateBtn.addEventListener('click', () => {
+            const max = parseInt(maxNumberSelect.value);
+            const numToGenerate = parseInt(numToGenerateSelect.value);
+            const fixedNumbers = Array.from(document.querySelectorAll('#fixed-numbers input:checked')).map(cb => parseInt(cb.value));
+
+            if (fixedNumbers.length > numToGenerate) {
+                alert('必ず含める数値の個数が、発生させる乱数の個数を超えています。');
+                return;
+            }
+
+            let numberPool = [];
+            for (let i = 1; i <= max; i++) {
+                if (!fixedNumbers.includes(i)) {
+                    numberPool.push(i);
                 }
             }
-            lines.push(line.sort((a,b)=>a-b));
-        }
-        return lines.sort((a,b)=> a[0] - b[0]);
-    }
+            for (let i = numberPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numberPool[i], numberPool[j]] = [numberPool[j], numberPool[i]];
+            }
 
-    function displayRecommendations(sortedRacers) {
-        hitRateRecsUl.innerHTML = '';
-        recoveryRateRecsUl.innerHTML = '';
-        
-        // 的中率重視：スコア上位3名で構成
-        const top3 = sortedRacers.slice(0, 3).map(r => r.num);
-        hitRateRecsUl.innerHTML = `<li><strong>3連単ボックス:</strong> ${top3.join(', ')}</li>`;
-        hitRateRecsUl.innerHTML += `<li><strong>3連複:</strong> ${top3.sort((a,b)=>a-b).join('-')}</li>`;
-        hitRateRecsUl.innerHTML += `<li><strong>2車単ボックス:</strong> ${top3.slice(0,2).join('⇔')}</li>`;
-        
-        // 回収率重視：スコア上位1-2位を軸に、中位(4-6位)を絡める
-        const topRacer = sortedRacers[0].num;
-        const secondRacer = sortedRacers[1].num;
-        const midRacers = sortedRacers.slice(3, 6).map(r => r.num);
+            const neededRandoms = numToGenerate - fixedNumbers.length;
+            const randomPicks = numberPool.slice(0, neededRandoms);
+            const finalNumbers = [...fixedNumbers, ...randomPicks].sort((a, b) => a - b);
 
-        if (midRacers.length >= 1) {
-            recoveryRateRecsUl.innerHTML = `<li><strong>3連単 (軸2頭マルチ):</strong> 軸[${topRacer}, ${secondRacer}] 相手[${midRacers.join(', ')}]</li>`;
-            recoveryRateRecsUl.innerHTML += `<li><strong>3連複 (フォーメーション):</strong> 1頭目:${topRacer} → 2頭目:${secondRacer} → 3頭目:${midRacers.join(', ')}</li>`;
-            recoveryRateRecsUl.innerHTML += `<li><strong>2車単 (マルチ):</strong> ${topRacer}⇔${midRacers[0]}</li>`;
-        } else {
-             recoveryRateRecsUl.innerHTML = `<li>適切な組み合わせを作成できませんでした。</li>`;
+            randomNumbersP.textContent = finalNumbers.join(' ');
+            
+            // 提案を表示
+            displayRecommendations(finalNumbers, fixedNumbers);
+            resultsDiv.style.display = 'block';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            maxNumberSelect.value = '9';
+            initialize();
+            resultsDiv.style.display = 'none';
+            alert('設定をリセットしました。');
+        });
+
+        function getPermutations(arr, size) {
+             if (size > arr.length) return [];
+            if (size === 0) return [[]];
+            const perms = [];
+            arr.forEach((item, index) => {
+                const remaining = [...arr.slice(0, index), ...arr.slice(index + 1)];
+                const subPerms = getPermutations(remaining, size - 1);
+                subPerms.forEach(subPerm => perms.push([item, ...subPerm]));
+            });
+            return perms;
         }
-    }
-});
+        
+        function getCombinations(arr, size) {
+            if (size > arr.length) return [];
+            if (size === 0) return [[]];
+            if (arr.length === 0) return [];
+            
+            const [first, ...rest] = arr;
+            const combsWithFirst = getCombinations(rest, size - 1).map(comb => [first, ...comb]);
+            const combsWithoutFirst = getCombinations(rest, size);
+            
+            return [...combsWithFirst, ...combsWithoutFirst];
+        }
+
+        function calculateConfidence(bet, fixedNumbers) {
+            let score = 1; // Base score
+            const fixedCount = bet.filter(num => fixedNumbers.includes(num)).length;
+            
+            if(fixedNumbers.length > 0) {
+                if (fixedCount === fixedNumbers.length) {
+                    score += 2; // All fixed numbers are included
+                } else if (fixedCount > 0) {
+                    score += 1; // Some fixed numbers are included
+                }
+            } else {
+                score += 1; // No fixed numbers specified, so it's neutral
+            }
+
+            // Higher score for more focused bets
+            if(bet.length <= 2) score += 2;
+            else if (bet.length <= 3) score += 1;
+
+            score = Math.min(score, 5); // Cap at 5 stars
+            return '★'.repeat(score) + '☆'.repeat(5 - score);
+        }
+
+        function displayRecommendations(numbers, fixedNumbers) {
+            hitRateRecsUl.innerHTML = '';
+            recoveryRateRecsUl.innerHTML = '';
+            
+            // 的中率重視 (小さい数字から)
+            const hitRateNumbers = [...numbers].sort((a, b) => a - b);
+            addRecs(hitRateRecsUl, hitRateNumbers, fixedNumbers);
+
+            // 回収率重視 (大きい数字から)
+            const recoveryRateNumbers = [...numbers].sort((a, b) => b - a);
+            addRecs(recoveryRateRecsUl, recoveryRateNumbers, fixedNumbers);
+        }
+
+        function addRecs(ulElement, numbers, fixedNumbers) {
+             if (numbers.length >= 3) {
+                const top3 = numbers.slice(0, 3);
+                const box3t = getPermutations(top3, 3);
+                const box3f = getCombinations(top3, 3);
+                const confidence3 = calculateConfidence(top3, fixedNumbers);
+                ulElement.innerHTML += `<li><strong>3連単ボックス:</strong> ${top3.join(', ')} <span class="confidence">${confidence3}</span></li>`;
+                ulElement.innerHTML += `<li><strong>3連複ボックス:</strong> ${box3f[0].join('-')} <span class="confidence">${confidence3}</span></li>`;
+            }
+            if (numbers.length >= 2) {
+                const top2 = numbers.slice(0, 2);
+                const box2t = getPermutations(top2, 2);
+                const confidence2 = calculateConfidence(top2, fixedNumbers);
+                ulElement.innerHTML += `<li><strong>2車単ボックス:</strong> ${box2t.map(p=>p.join('→')).join(', ')} <span class="confidence">${confidence2}</span></li>`;
+            }
+             if (numbers.length >= 4) {
+                const n1 = numbers[0];
+                const n2 = numbers[1];
+                const others = numbers.slice(2,4);
+                const confidenceF = calculateConfidence([n1, n2, ...others], fixedNumbers);
+                ulElement.innerHTML += `<li><strong>3連単フォーメーション:</strong> 1着:${n1}, 2着:${n2}, 3着:${others.join(',')} <span class="confidence">${confidenceF}</span></li>`;
+            }
+        }
+
+        // 初期化
+        initialize();
+    });
 </script>
 
 </body>
