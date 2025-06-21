@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>競輪 乱数・買い目ジェネレーター</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            color: #0d47a1;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        select, button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #1877f2;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #166fe5;
+        }
+        .fixed-numbers-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            gap: 10px;
+        }
+        .fixed-number-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fixed-number-item input {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+        }
+        .results {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .result-box {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d7ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .result-box h3 {
+            margin-top: 0;
+            color: #0d47a1;
+            font-size: 18px;
+        }
+        .result-numbers {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 8px;
+            color: #d32f2f;
+        }
+        .recommendation ul {
+            padding-left: 20px;
+            list-style-type: '🚲';
+            margin: 0;
+        }
+        .recommendation li {
+            padding-left: 10px;
+            margin-bottom: 8px;
+        }
+        #reset-seed {
+            background-color: #6c757d;
+        }
+        #reset-seed:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>競輪 乱数・買い目ジェネレーター</h1>
+
+    <div class="control-group">
+        <label for="max-number">最大値（何車立て？）</label>
+        <select id="max-number">
+            <option value="9" selected>9車立て</option>
+            <option value="8">8車立て</option>
+            <option value="7">7車立て</option>
+        </select>
+    </div>
+
+    <div class="control-group">
+        <label for="num-to-generate">発生させる乱数の個数</label>
+        <select id="num-to-generate">
+            <option value="3">3個</option>
+            <option value="4">4個</option>
+            <option value="5">5個</option>
+            <option value="6">6個</option>
+        </select>
+    </div>
+
+    <div class="control-group">
+        <label>必ず含める数値（軸）</label>
+        <div id="fixed-numbers" class="fixed-numbers-container"></div>
+    </div>
+
+    <button id="generate-btn">乱数を生成して買い目を表示</button>
+    <button id="reset-seed">設定をリセット</button>
+
+    <div id="results" class="results" style="display: none;">
+        <div class="result-box">
+            <h3>生成された乱数</h3>
+            <p id="random-numbers" class="result-numbers"></p>
+        </div>
+        <div id="recommendation-box" class="result-box recommendation">
+            <h3>AI風 推奨買い目</h3>
+            <ul id="recommendations"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const maxNumberSelect = document.getElementById('max-number');
+        const numToGenerateSelect = document.getElementById('num-to-generate');
+        const fixedNumbersContainer = document.getElementById('fixed-numbers');
+        const generateBtn = document.getElementById('generate-btn');
+        const resetBtn = document.getElementById('reset-seed');
+        const resultsDiv = document.getElementById('results');
+        const randomNumbersP = document.getElementById('random-numbers');
+        const recommendationsUl = document.getElementById('recommendations');
+
+        function initialize() {
+            updateFixedNumbers();
+            updateNumToGenerateOptions();
+        }
+
+        function updateFixedNumbers() {
+            const max = parseInt(maxNumberSelect.value);
+            fixedNumbersContainer.innerHTML = '';
+            for (let i = 1; i <= max; i++) {
+                const item = document.createElement('div');
+                item.className = 'fixed-number-item';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = 'fix-' + i;
+                checkbox.value = i;
+                const label = document.createElement('label');
+                label.htmlFor = 'fix-' + i;
+                label.textContent = i;
+                item.appendChild(checkbox);
+                item.appendChild(label);
+                fixedNumbersContainer.appendChild(item);
+            }
+        }
+
+        function updateNumToGenerateOptions() {
+            const max = parseInt(maxNumberSelect.value);
+            const currentVal = numToGenerateSelect.value;
+            numToGenerateSelect.innerHTML = '';
+            for (let i = 2; i <= max; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${i}個`;
+                numToGenerateSelect.appendChild(option);
+            }
+             // 以前の選択値を復元（存在すれば）
+            if (currentVal <= max) {
+               numToGenerateSelect.value = currentVal;
+            } else {
+               numToGenerateSelect.value = Math.min(3, max);
+            }
+        }
+
+        maxNumberSelect.addEventListener('change', () => {
+             initialize();
+        });
+
+        generateBtn.addEventListener('click', () => {
+            const max = parseInt(maxNumberSelect.value);
+            const numToGenerate = parseInt(numToGenerateSelect.value);
+            const fixedNumbers = Array.from(document.querySelectorAll('#fixed-numbers input:checked')).map(cb => parseInt(cb.value));
+
+            if (fixedNumbers.length > numToGenerate) {
+                alert('必ず含める数値の個数が、発生させる乱数の個数を超えています。');
+                return;
+            }
+
+            let numberPool = [];
+            for (let i = 1; i <= max; i++) {
+                if (!fixedNumbers.includes(i)) {
+                    numberPool.push(i);
+                }
+            }
+
+            // Fisher-Yates shuffle
+            for (let i = numberPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numberPool[i], numberPool[j]] = [numberPool[j], numberPool[i]];
+            }
+
+            const neededRandoms = numToGenerate - fixedNumbers.length;
+            const randomPicks = numberPool.slice(0, neededRandoms);
+            const finalNumbers = [...fixedNumbers, ...randomPicks].sort((a, b) => a - b);
+
+            randomNumbersP.textContent = finalNumbers.join(' ');
+            displayRecommendations(finalNumbers);
+            resultsDiv.style.display = 'block';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            // SEED値のリセットはブラウザの乱数生成器に依存するため、実質的には設定をクリアする
+            maxNumberSelect.value = '9';
+            initialize();
+            resultsDiv.style.display = 'none';
+            alert('設定をリセットしました。新しいパターンで乱数を生成できます。');
+        });
+
+        function getPermutations(arr, size) {
+            if (size > arr.length) return [];
+            if (size === 1) return arr.map(x => [x]);
+            
+            const perms = [];
+            arr.forEach((item, index) => {
+                const remaining = [...arr.slice(0, index), ...arr.slice(index + 1)];
+                const subPerms = getPermutations(remaining, size - 1);
+                subPerms.forEach(subPerm => perms.push([item, ...subPerm]));
+            });
+            return perms;
+        }
+
+        function displayRecommendations(numbers) {
+            recommendationsUl.innerHTML = '';
+            
+            if (numbers.length < 2) return;
+
+            // 2車単ボックス / 2車複ボックス / ワイド
+            if (numbers.length >= 2) {
+                const pairs = getPermutations(numbers, 2);
+                recommendationsUl.innerHTML += `<li><strong>2車単ボックス:</strong> ${pairs.map(p => p.join('→')).join(', ')}</li>`;
+                recommendationsUl.innerHTML += `<li><strong>2車複ボックス:</strong> ${pairs.map(p => p.sort((a,b)=>a-b).join('-')).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</li>`;
+                recommendationsUl.innerHTML += `<li><strong>ワイド:</strong> ${pairs.map(p => p.sort((a,b)=>a-b).join('-')).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</li>`;
+            }
+            
+            if (numbers.length < 3) return;
+
+            const triplets = getPermutations(numbers, 3);
+            
+            // 3連単ボックス
+            recommendationsUl.innerHTML += `<li><strong>3連単ボックス:</strong> ${triplets.map(p => p.join('→')).join(', ')}</li>`;
+            
+            // 3連複ボックス
+            recommendationsUl.innerHTML += `<li><strong>3連複ボックス:</strong> ${triplets.map(p => p.sort((a,b)=>a-b).join('-')).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</li>`;
+
+            // 3連単フォーメーション (例)
+            const n1 = numbers[0];
+            const n2 = numbers[1];
+            const others = numbers.slice(2);
+            if(others.length > 0) {
+                 recommendationsUl.innerHTML += `<li><strong>3連単フォーメーション(例1):</strong> 1着:${n1}、2着:${n2}、3着:${others.join(',')}</li>`;
+                 recommendationsUl.innerHTML += `<li><strong>3連単フォーメーション(例2):</strong> 1着:${n1},${n2}、2着:${n1},${n2}、3着:${others.join(',')}</li>`;
+            }
+        }
+
+        // 初期化
+        initialize();
+    });
+</script>
+
+</body>
+</html>
