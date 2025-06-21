@@ -39,6 +39,7 @@
         <label for="num-of-racers">車立て</label>
         <select id="num-of-racers">
             <option value="9" selected>9車立て</option>
+            <option value="8">8車立て</option>
             <option value="7">7車立て</option>
         </select>
     </div>
@@ -84,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 1. 仮想パラメータを生成
         const bankType = Math.random() < 0.5 ? '先行有利' : '追込有利';
-        bankInfoP.innerHTML = `<strong>仮想バンク情報:</strong> 尼崎競輪場を想定。本日の傾向は「${bankType}」と分析。`;
+        bankInfoP.innerHTML = `<strong>仮想バンク情報:</strong> 弥彦競輪場を想定。本日の傾向は「${bankType}」と分析。`;
 
         const racers = [];
         for (let i = 1; i <= numOfRacers; i++) {
