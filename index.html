@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>競輪 乱数・買い目ジェネレーター</title>
+    <title>競輪 乱数・買い目ジェネレーター v2</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -72,16 +72,17 @@
             padding-top: 20px;
         }
         .result-box {
-            background-color: #e7f3ff;
-            border: 1px solid #b3d7ff;
+            border: 1px solid #ddd;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 15px;
         }
         .result-box h3 {
             margin-top: 0;
-            color: #0d47a1;
             font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .result-numbers {
             font-size: 28px;
@@ -89,6 +90,9 @@
             text-align: center;
             letter-spacing: 8px;
             color: #d32f2f;
+            background-color: #e7f3ff;
+            padding: 10px;
+            border-radius: 6px;
         }
         .recommendation ul {
             padding-left: 20px;
@@ -105,19 +109,25 @@
         #reset-seed:hover {
             background-color: #5a6268;
         }
+        .confidence {
+            font-size: 16px;
+            color: #ffc107;
+        }
+        #hit-rate-box h3 { color: #1565c0; }
+        #recovery-rate-box h3 { color: #c62828; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>競輪 乱数・買い目ジェネレーター</h1>
+    <h1>競輪 乱数・買い目ジェネレーター v2</h1>
 
     <div class="control-group">
         <label for="max-number">最大値（何車立て？）</label>
         <select id="max-number">
-            <option value="9" selected>9車立て</option>
-            <option value="8">8車立て</option>
             <option value="7">7車立て</option>
+            <option value="8">8車立て</option>
+            <option value="9" selected>9車立て</option>
         </select>
     </div>
 
@@ -144,15 +154,22 @@
             <h3>生成された乱数</h3>
             <p id="random-numbers" class="result-numbers"></p>
         </div>
-        <div id="recommendation-box" class="result-box recommendation">
-            <h3>AI風 推奨買い目</h3>
-            <ul id="recommendations"></ul>
+        
+        <div id="hit-rate-box" class="result-box recommendation">
+            <h3>的中率重視（人気狙い風）</h3>
+            <ul id="hit-rate-recs"></ul>
+        </div>
+        
+        <div id="recovery-rate-box" class="result-box recommendation">
+            <h3>回収率重視（穴狙い風）</h3>
+            <ul id="recovery-rate-recs"></ul>
         </div>
     </div>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // ... (要素取得のコードは前回と同じ)
         const maxNumberSelect = document.getElementById('max-number');
         const numToGenerateSelect = document.getElementById('num-to-generate');
         const fixedNumbersContainer = document.getElementById('fixed-numbers');
@@ -160,8 +177,10 @@
         const resetBtn = document.getElementById('reset-seed');
         const resultsDiv = document.getElementById('results');
         const randomNumbersP = document.getElementById('random-numbers');
-        const recommendationsUl = document.getElementById('recommendations');
+        const hitRateRecsUl = document.getElementById('hit-rate-recs');
+        const recoveryRateRecsUl = document.getElementById('recovery-rate-recs');
 
+        // ... (initialize, updateFixedNumbers, updateNumToGenerateOptions 関数は前回と同じ)
         function initialize() {
             updateFixedNumbers();
             updateNumToGenerateOptions();
@@ -196,17 +215,14 @@
                 option.textContent = `${i}個`;
                 numToGenerateSelect.appendChild(option);
             }
-             // 以前の選択値を復元（存在すれば）
             if (currentVal <= max) {
                numToGenerateSelect.value = currentVal;
             } else {
                numToGenerateSelect.value = Math.min(3, max);
             }
         }
-
-        maxNumberSelect.addEventListener('change', () => {
-             initialize();
-        });
+        
+        maxNumberSelect.addEventListener('change', initialize);
 
         generateBtn.addEventListener('click', () => {
             const max = parseInt(maxNumberSelect.value);
@@ -224,8 +240,6 @@
                     numberPool.push(i);
                 }
             }
-
-            // Fisher-Yates shuffle
             for (let i = numberPool.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [numberPool[i], numberPool[j]] = [numberPool[j], numberPool[i]];
@@ -236,22 +250,22 @@
             const finalNumbers = [...fixedNumbers, ...randomPicks].sort((a, b) => a - b);
 
             randomNumbersP.textContent = finalNumbers.join(' ');
-            displayRecommendations(finalNumbers);
+            
+            // 提案を表示
+            displayRecommendations(finalNumbers, fixedNumbers);
             resultsDiv.style.display = 'block';
         });
 
         resetBtn.addEventListener('click', () => {
-            // SEED値のリセットはブラウザの乱数生成器に依存するため、実質的には設定をクリアする
             maxNumberSelect.value = '9';
             initialize();
             resultsDiv.style.display = 'none';
-            alert('設定をリセットしました。新しいパターンで乱数を生成できます。');
+            alert('設定をリセットしました。');
         });
 
         function getPermutations(arr, size) {
-            if (size > arr.length) return [];
-            if (size === 1) return arr.map(x => [x]);
-            
+             if (size > arr.length) return [];
+            if (size === 0) return [[]];
             const perms = [];
             arr.forEach((item, index) => {
                 const remaining = [...arr.slice(0, index), ...arr.slice(index + 1)];
@@ -260,37 +274,75 @@
             });
             return perms;
         }
-
-        function displayRecommendations(numbers) {
-            recommendationsUl.innerHTML = '';
+        
+        function getCombinations(arr, size) {
+            if (size > arr.length) return [];
+            if (size === 0) return [[]];
+            if (arr.length === 0) return [];
             
-            if (numbers.length < 2) return;
+            const [first, ...rest] = arr;
+            const combsWithFirst = getCombinations(rest, size - 1).map(comb => [first, ...comb]);
+            const combsWithoutFirst = getCombinations(rest, size);
+            
+            return [...combsWithFirst, ...combsWithoutFirst];
+        }
 
-            // 2車単ボックス / 2車複ボックス / ワイド
-            if (numbers.length >= 2) {
-                const pairs = getPermutations(numbers, 2);
-                recommendationsUl.innerHTML += `<li><strong>2車単ボックス:</strong> ${pairs.map(p => p.join('→')).join(', ')}</li>`;
-                recommendationsUl.innerHTML += `<li><strong>2車複ボックス:</strong> ${pairs.map(p => p.sort((a,b)=>a-b).join('-')).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</li>`;
-                recommendationsUl.innerHTML += `<li><strong>ワイド:</strong> ${pairs.map(p => p.sort((a,b)=>a-b).join('-')).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</li>`;
+        function calculateConfidence(bet, fixedNumbers) {
+            let score = 1; // Base score
+            const fixedCount = bet.filter(num => fixedNumbers.includes(num)).length;
+            
+            if(fixedNumbers.length > 0) {
+                if (fixedCount === fixedNumbers.length) {
+                    score += 2; // All fixed numbers are included
+                } else if (fixedCount > 0) {
+                    score += 1; // Some fixed numbers are included
+                }
+            } else {
+                score += 1; // No fixed numbers specified, so it's neutral
             }
-            
-            if (numbers.length < 3) return;
 
-            const triplets = getPermutations(numbers, 3);
-            
-            // 3連単ボックス
-            recommendationsUl.innerHTML += `<li><strong>3連単ボックス:</strong> ${triplets.map(p => p.join('→')).join(', ')}</li>`;
-            
-            // 3連複ボックス
-            recommendationsUl.innerHTML += `<li><strong>3連複ボックス:</strong> ${triplets.map(p => p.sort((a,b)=>a-b).join('-')).filter((v,i,a)=>a.indexOf(v)===i).join(', ')}</li>`;
+            // Higher score for more focused bets
+            if(bet.length <= 2) score += 2;
+            else if (bet.length <= 3) score += 1;
 
-            // 3連単フォーメーション (例)
-            const n1 = numbers[0];
-            const n2 = numbers[1];
-            const others = numbers.slice(2);
-            if(others.length > 0) {
-                 recommendationsUl.innerHTML += `<li><strong>3連単フォーメーション(例1):</strong> 1着:${n1}、2着:${n2}、3着:${others.join(',')}</li>`;
-                 recommendationsUl.innerHTML += `<li><strong>3連単フォーメーション(例2):</strong> 1着:${n1},${n2}、2着:${n1},${n2}、3着:${others.join(',')}</li>`;
+            score = Math.min(score, 5); // Cap at 5 stars
+            return '★'.repeat(score) + '☆'.repeat(5 - score);
+        }
+
+        function displayRecommendations(numbers, fixedNumbers) {
+            hitRateRecsUl.innerHTML = '';
+            recoveryRateRecsUl.innerHTML = '';
+            
+            // 的中率重視 (小さい数字から)
+            const hitRateNumbers = [...numbers].sort((a, b) => a - b);
+            addRecs(hitRateRecsUl, hitRateNumbers, fixedNumbers);
+
+            // 回収率重視 (大きい数字から)
+            const recoveryRateNumbers = [...numbers].sort((a, b) => b - a);
+            addRecs(recoveryRateRecsUl, recoveryRateNumbers, fixedNumbers);
+        }
+
+        function addRecs(ulElement, numbers, fixedNumbers) {
+             if (numbers.length >= 3) {
+                const top3 = numbers.slice(0, 3);
+                const box3t = getPermutations(top3, 3);
+                const box3f = getCombinations(top3, 3);
+                const confidence3 = calculateConfidence(top3, fixedNumbers);
+                ulElement.innerHTML += `<li><strong>3連単ボックス:</strong> ${top3.join(', ')} <span class="confidence">${confidence3}</span></li>`;
+                ulElement.innerHTML += `<li><strong>3連複ボックス:</strong> ${box3f[0].join('-')} <span class="confidence">${confidence3}</span></li>`;
+            }
+            if (numbers.length >= 2) {
+                const top2 = numbers.slice(0, 2);
+                const box2t = getPermutations(top2, 2);
+                const confidence2 = calculateConfidence(top2, fixedNumbers);
+                ulElement.innerHTML += `<li><strong>2車単ボックス:</strong> ${box2t.map(p=>p.join('→')).join(', ')} <span class="confidence">${confidence2}</span></li>`;
+            }
+             if (numbers.length >= 4) {
+                const n1 = numbers[0];
+                const n2 = numbers[1];
+                const others = numbers.slice(2,4);
+                const confidenceF = calculateConfidence([n1, n2, ...others], fixedNumbers);
+                ulElement.innerHTML += `<li><strong>3連単フォーメーション:</strong> 1着:${n1}, 2着:${n2}, 3着:${others.join(',')} <span class="confidence">${confidenceF}</span></li>`;
             }
         }
 
